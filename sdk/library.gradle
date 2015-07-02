@@ -1,0 +1,51 @@
+// This is the build script for all libraries/folders in this repo.
+
+apply plugin: 'java'
+apply plugin: 'maven'
+
+repositories {
+    maven {
+        url  "http://dl.bintray.com/msopentech/Maven" 
+    }
+}
+
+dependencies {
+    compile 'com.google.code.gson:gson:2.3'
+    compile 'com.google.guava:guava:18.0'
+    compile 'com.microsoft.azure:adal4j:1.0.0'
+    compile 'org.json:json:20090211'
+    compile(group: 'com.microsoft.services.orc', name: 'orc-jvm', version: '1.0.0')
+}
+
+uploadArchives {
+    configuration = configurations.archives
+    repositories.mavenDeployer {
+        pom {
+           setGroupId project.mavenGroupId
+           setArtifactId project.mavenArtifactId
+           setVersion project.mavenVersion
+        }
+        repository (url: project.mavenRepoUrl) {
+            authentication(
+                 // put these values in local file ~/.gradle/properties.gradle
+                 userName: project.bintrayUsername,
+                 password: project.bintrayApikey
+            )
+        }
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
