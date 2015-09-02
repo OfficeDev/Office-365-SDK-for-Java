@@ -28,7 +28,7 @@ Current services, service versions, and SDK versions:
 |Discovery|1.0|1.0.0|discovery-services-java|
 |AAD Graph|1.5|0.15.0|directory-services-java|
 |OneNote|1.0|0.15.0|onenote-services-java|
-|Unified API|beta|0.2.2|graph-services-java|
+|Unified API|beta|0.2.5|graph-services-java|
 |SharePoint Lists|1.0|1.0.0|sharepoint-services-java|
 
 [Vipr]: https://github.com/microsoft/vipr
