@@ -2,10 +2,17 @@
 
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'com.jfrog.artifactory-upload'
+
+group = project.mavenGroupId
+version = project.mavenVersion
+
+//def targetRepo = project.version.endsWith('-SNAPSHOT')?'oss-snapshot-local':'oss-release-local'
+def targetRepo = 'oss-snapshot-local'
 
 repositories {
     maven {
-        url  "http://dl.bintray.com/msopentech/Maven" 
+        url  "http://dl.bintray.com/msopentech/Maven"
     }
 }
 
@@ -14,7 +21,7 @@ dependencies {
     compile 'com.google.guava:guava:18.0'
     compile 'com.microsoft.azure:adal4j:1.0.0'
     compile 'org.json:json:20090211'
-    compile(group: 'com.microsoft.services.orc', name: 'orc-java', version: '1.0.0')
+    compile 'com.microsoft.services.orc:orc-java:1.0.0'
 }
 
 uploadArchives {
@@ -35,6 +42,27 @@ uploadArchives {
     }
 }
 
+artifactory {
+    contextUrl = 'https://oss.jfrog.org'
+    publish {
+        repository {
+            repoKey = targetRepo
+            username = project.hasProperty("bintrayUsername") ? project.bintrayUsername : ""
+            password = project.hasProperty("bintrayApikey") ? project.bintrayApikey : ""
+        }
+        defaults {
+            publishConfigs('archives')
+            publishPom = true //Publish generated POM files to Artifactory (true by default)
+            publishIvy = false //Publish generated Ivy descriptor files to Artifactory (true by default)
+        }
+    }
+    resolve {
+        repository {
+            repoKey = 'oss-release-local'
+        }
+    }
+}
+
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
     from sourceSets.main.allSource
@@ -48,4 +76,8 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 artifacts {
     archives javadocJar
     archives sourcesJar
+}
+
+artifactoryPublish {
+    dependsOn sourcesJar
 }
