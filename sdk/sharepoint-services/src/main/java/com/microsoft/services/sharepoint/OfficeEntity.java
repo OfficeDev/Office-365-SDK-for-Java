@@ -6,6 +6,8 @@
 package com.microsoft.services.sharepoint;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.json.JSONArray;
@@ -123,6 +125,16 @@ public abstract class OfficeEntity {
 			throw new IllegalArgumentException("Invalid field name " + field, e);
 		}
 	}
+
+
+	public Collection<String> getKeyNames() throws JSONException {
+		JSONObject innerJson = mJsonData;
+		if (mJsonData.has("d")) {
+			innerJson = mJsonData.getJSONObject("d");
+		}
+		return Arrays.asList(JSONObject.getNames(innerJson));
+	}
+
 
 	@Override
 	public String toString() {

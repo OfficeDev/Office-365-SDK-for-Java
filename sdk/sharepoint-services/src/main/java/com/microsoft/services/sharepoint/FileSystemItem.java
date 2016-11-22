@@ -39,8 +39,8 @@ public class FileSystemItem extends OfficeEntity {
 	 * 
 	 * @return the id
 	 */
-	public int getId() {
-		return (Integer) getData("Id");
+	public String getId() {
+		return getData("Id").toString();
 	}
 
 	/**

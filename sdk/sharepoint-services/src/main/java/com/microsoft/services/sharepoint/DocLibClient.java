@@ -6,6 +6,7 @@
 package com.microsoft.services.sharepoint;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -597,6 +598,138 @@ public class DocLibClient extends SharePointClient {
 		return result;
 	}
 
+
+	public ListenableFuture<FileSystemItem> getFileSystemItemById(String uniqueId) {
+		final SettableFuture files = SettableFuture.create();
+		String getFilesUrl = this.getSiteUrl() + String.format("_api/web/GetFileById(%s)", new Object[]{this.getUrlPath(uniqueId)});
+
+		try {
+			ListenableFuture t = this.executeRequestJson(getFilesUrl, "GET");
+			Futures.addCallback(t, new FutureCallback<JSONObject>() {
+				public void onFailure(Throwable t) {
+					files.setException(t);
+				}
+
+
+				public void onSuccess(JSONObject json) {
+					try {
+						FileSystemItem e = new FileSystemItem();
+						e.loadFromJson(json);
+						files.set(e);
+					} catch (Throwable var3) {
+						files.setException(var3);
+					}
+
+				}
+			});
+		} catch (Throwable var6) {
+			files.setException(var6);
+		}
+
+		return files;
+	}
+
+
+	public ListenableFuture<SPListItem> getFileListItemByUrl(URL url) {
+		if (url == null) {
+			throw new IllegalArgumentException("url cannot be null");
+		}
+		int pos = url.getPath().lastIndexOf("/");
+		String path = url.getPath().substring(0, pos);
+		String name = url.getPath().substring(pos+1);
+
+
+		// https://sphereon.sharepoint.com/_api/web/getfolderbyserverrelativeurl('%2FGedeelde%20%20documenten')/files/getbyurl('test%20-%20Copy%20(2).pdf')
+		final SettableFuture result = SettableFuture.create();
+		String getUrl = getSiteUrl() + String.format("_api/web/getfolderbyserverrelativeurl('%s')/files/getbyurl('%s')/listItemAllFields ", urlEncode(path), urlEncode(name));
+
+		try {
+			ListenableFuture t = this.executeRequestJson(getUrl, "GET");
+			Futures.addCallback(t, new FutureCallback<JSONObject>() {
+				public void onFailure(Throwable t) {
+					result.setException(t);
+				}
+
+
+				public void onSuccess(JSONObject json) {
+					try {
+						SPListItem e = new SPListItem();
+						e.loadFromJson(json);
+						result.set(e);
+					} catch (Throwable var3) {
+						result.setException(var3);
+					}
+
+				}
+			});
+		} catch (Throwable var6) {
+			result.setException(var6);
+		}
+		return result;
+	}
+
+
+
+	public ListenableFuture<byte[]> getFileById(String uniqueId) {
+		if (isNotEmpty(uniqueId)) {
+			String getFileUrl = this.getSiteUrl() + String.format("_api/web/GetFileById(%s)/$value", new Object[]{this.getUrlPath(uniqueId)});
+			return this.executeRequest(getFileUrl, "GET");
+		} else {
+			throw new IllegalArgumentException("Path cannot be null or empty");
+		}
+	}
+
+
+	public ListenableFuture<Void> checkOutFileById(String uniqueId) {
+		final SettableFuture result = SettableFuture.create();
+		if (isNotEmpty(uniqueId)) {
+			String checkoutFileUrl = this.getSiteUrl() + String.format("_api/web/GetFileById(%s)/checkout()", this.getUrlPath(uniqueId));
+			ListenableFuture request = this.executeRequestJsonWithDigest(checkoutFileUrl, "POST", new HashMap(), null);
+			Futures.addCallback(request, new FutureCallback<JSONObject>() {
+				public void onFailure(Throwable t) {
+					result.setException(t);
+				}
+
+
+				public void onSuccess(JSONObject json) {
+					result.set(null);
+				}
+			});
+		} else {
+			throw new IllegalArgumentException("File id cannot be null or empty");
+		}
+		return result;
+	}
+
+
+	public ListenableFuture<Void> checkInFileById(String uniqueId, CheckinType checkinType, String comment) {
+		final SettableFuture result = SettableFuture.create();
+		if (isNotEmpty(uniqueId)) {
+			String checkoutFileUrl = this.getSiteUrl() + String.format("_api/web/GetFileById(%s)/checkin(comment='%s',checkintype=%d)",
+					this.getUrlPath(uniqueId), urlEncode(comment), checkinType.ordinal());
+			ListenableFuture request = this.executeRequestJsonWithDigest(checkoutFileUrl, "POST", new HashMap(), null);
+			Futures.addCallback(request, new FutureCallback<JSONObject>() {
+				public void onFailure(Throwable t) {
+					result.setException(t);
+				}
+
+
+				public void onSuccess(JSONObject json) {
+					result.set(null);
+				}
+			});
+		} else {
+			throw new IllegalArgumentException("File id cannot be null or empty");
+		}
+		return result;
+	}
+
+
+	private static boolean isNotEmpty(String value) {
+		return value != null && value.length() > 0;
+	}
+
+
 	/**
 	 * Returns the URL component for a path
 	 */
@@ -612,5 +745,10 @@ public class DocLibClient extends SharePointClient {
 			urlPath = String.format("'%s'", urlEncode(path));
 		}
 		return urlPath;
+	}
+
+
+	public enum CheckinType {
+		MINOR_CHECKIN, MAJOR_CHECKIN, OVERWRITE_CHECKIN
 	}
 }

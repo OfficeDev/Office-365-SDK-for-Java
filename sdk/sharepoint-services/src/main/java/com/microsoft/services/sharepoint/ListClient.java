@@ -6,10 +6,7 @@
 package com.microsoft.services.sharepoint;
 
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -145,6 +142,68 @@ public class ListClient extends SharePointClient {
 		return result;
 	}
 
+  /**
+     * Gets the list.
+     *
+     * @param listId the list name
+     * @return the list
+     */
+	public ListenableFuture<SPList> getList(UUID listId) {
+		final SettableFuture<SPList> result = SettableFuture.create();
+		String getListUrl = getSiteUrl() + "_api/web/lists(guid'%s')";
+		getListUrl = String.format(getListUrl, listId.toString());
+		ListenableFuture<JSONObject> request = executeRequestJson(getListUrl, "GET");
+
+		Futures.addCallback(request, new FutureCallback<JSONObject>() {
+			@Override
+			public void onFailure(Throwable t) {
+				result.setException(t);
+			}
+
+			@Override
+			public void onSuccess(JSONObject json) {
+				SPList list = new SPList();
+				list.loadFromJson(json, true);
+				result.set(list);
+			}
+		});
+
+		return result;
+	}
+
+    /**
+     * Gets the list items.
+     *
+     * @param listId the list name
+     * @param query the query
+     * @return the list items
+     */
+	public ListenableFuture<List<SPListItem>> getListItems(UUID listId, Query query) {
+		final SettableFuture<List<SPListItem>> result = SettableFuture.create();
+
+		String listNamePart = String.format("_api/web/lists(guid'%s')/Items?", listId);
+		String getListUrl = getSiteUrl() + listNamePart + generateODataQueryString(query);
+		ListenableFuture<JSONObject> request = executeRequestJson(getListUrl, "GET");
+
+		Futures.addCallback(request, new FutureCallback<JSONObject>() {
+			@Override
+			public void onFailure(Throwable t) {
+				result.setException(t);
+			}
+
+			@Override
+			public void onSuccess(JSONObject json) {
+				try {
+					result.set(SPListItem.listFromJson(json));
+				} catch (JSONException e) {
+					log(e);
+				}
+			}
+		});
+
+		return result;
+	}
+
     /**
      * Gets the list fields.
      *
@@ -242,8 +301,8 @@ public class ListClient extends SharePointClient {
 	public ListenableFuture<Void> updateListItem(final SPListItem listItem, final SPList list) {
 		final SettableFuture<Void> result = SettableFuture.create();
 
-		String getListUrl = getSiteUrl() + "_api/web/lists/GetByTitle('%s')/items(" + listItem.getId() + ")";
-		getListUrl = String.format(getListUrl, urlEncode(list.getTitle()));
+		String getListUrl = getSiteUrl() + "_api/web/lists(guid'%s')/items(" + listItem.getId() + ")";
+		getListUrl = String.format(getListUrl, list.getData("Id").toString());
 
 		try {
 			JSONObject payload = new JSONObject();
@@ -288,18 +347,19 @@ public class ListClient extends SharePointClient {
 		return result;
 	}
 
+
     /**
      * Delete list item.
      *
-     * @param listItem the list item
+     * @param listIdthe list item
      * @param listName the list name
      * @return the office future
      */
-	public ListenableFuture<Void> deleteListItem(final SPListItem listItem, final String listName) {
+	public ListenableFuture<Void> deleteListItem(final SPListItem listItem, final UUID listId) {
 		final SettableFuture<Void> result = SettableFuture.create();
 
-		String getListUrl = getSiteUrl() + "_api/web/lists/GetByTitle('%s')/items(" + listItem.getId() + ")";
-		getListUrl = String.format(getListUrl, urlEncode(listName));
+		String getListUrl = getSiteUrl() + "_api/web/lists(guid'%s')/items(" + listItem.getId() + ")";
+		getListUrl = String.format(getListUrl, listId);
 
 		try {
 			Map<String, String> headers = new HashMap<String, String>();
