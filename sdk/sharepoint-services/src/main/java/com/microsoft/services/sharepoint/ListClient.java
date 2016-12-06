@@ -73,6 +73,7 @@ public class ListClient extends SharePointClient {
 					result.set(list);
 				} catch (JSONException e) {
 					log(e);
+					result.setException(e);
 				}
 			}
 		});
@@ -135,6 +136,7 @@ public class ListClient extends SharePointClient {
 					result.set(SPListItem.listFromJson(json));
 				} catch (JSONException e) {
 					log(e);
+					result.setException(e);
 				}
 			}
 		});
@@ -197,6 +199,7 @@ public class ListClient extends SharePointClient {
 					result.set(SPListItem.listFromJson(json));
 				} catch (JSONException e) {
 					log(e);
+					result.setException(e);
 				}
 			}
 		});
@@ -230,6 +233,7 @@ public class ListClient extends SharePointClient {
 					result.set(SPListField.listFromJson(json));
 				} catch (JSONException e) {
 					log(e);
+					result.setException(e);
 				}
 			}
 		});
@@ -419,6 +423,71 @@ public class ListClient extends SharePointClient {
 					result.set(columnNames);
 				} catch (JSONException e) {
 					log(e);
+					result.setException(e);
+				}
+			}
+		});
+		return result;
+	}
+
+
+	/**
+	 * Get a list of sub-webs for the current site collection
+	 * @return
+	 */
+	public ListenableFuture<List<SPWeb>> getSubWebs() {
+		final SettableFuture<List<SPWeb>> result = SettableFuture.create();
+
+		String getListsUrl = getSiteUrl() + "_api/web/?$select=Webs&$expand=Webs";
+
+		ListenableFuture<JSONObject> request = executeRequestJson(getListsUrl, "GET");
+
+		Futures.addCallback(request, new FutureCallback<JSONObject>() {
+			@Override
+			public void onFailure(Throwable t) {
+				result.setException(t);
+			}
+
+			@Override
+			public void onSuccess(JSONObject json) {
+				try {
+					List<SPWeb> list = SPWeb.listFromJson(json);
+					result.set(list);
+				} catch (JSONException e) {
+					log(e);
+					result.setException(e);
+				}
+			}
+		});
+		return result;
+	}
+
+
+    /**
+	 * Get root web for the current site collection
+	 * @return
+	 */
+	public ListenableFuture<SPWeb> getRootWeb() {
+		final SettableFuture<SPWeb> result = SettableFuture.create();
+
+		String getListsUrl = getSiteUrl() + "_api/Site/RootWeb";
+
+		ListenableFuture<JSONObject> request = executeRequestJson(getListsUrl, "GET");
+
+		Futures.addCallback(request, new FutureCallback<JSONObject>() {
+			@Override
+			public void onFailure(Throwable t) {
+				result.setException(t);
+			}
+
+			@Override
+			public void onSuccess(JSONObject json) {
+				try {
+					SPWeb rootWeb = SPWeb.createFromJson(json, SPWeb.class);
+					result.set(rootWeb);
+				} catch (JSONException e) {
+					log(e);
+					result.setException(e);
 				}
 			}
 		});
