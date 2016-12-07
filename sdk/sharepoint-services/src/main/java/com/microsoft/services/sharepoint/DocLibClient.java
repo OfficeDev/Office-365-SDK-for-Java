@@ -10,6 +10,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,6 +30,7 @@ public class DocLibClient extends SharePointClient {
 	 * Instantiates a new file API client.
 	 * 
 	 * @param serverUrl
+	 * @param siteRelativeUrl
 	 * @param credentials
 	 */
 	public DocLibClient(String serverUrl, String siteRelativeUrl, Credentials credentials) {
@@ -261,7 +263,7 @@ public class DocLibClient extends SharePointClient {
 		if (path == null || path.length() == 0) {
 			throw new IllegalArgumentException("path cannot be null or empty");
 		}
-		final ListenableFuture<FileSystemItem> fileMetadata = createEmpty(path, null, FileConstants.FOLDER_CREATE);
+		final ListenableFuture<FileSystemItem> fileMetadata = createEmpty(path, (String) null, FileConstants.FOLDER_CREATE);
 		return fileMetadata;
 	}
 
@@ -298,7 +300,7 @@ public class DocLibClient extends SharePointClient {
 			throw new IllegalArgumentException("fileName cannot be null or empty");
 		}
 
-		final ListenableFuture<FileSystemItem> fileMetadata = createEmpty(fileName, null, FileConstants.FILE_CREATE);
+		final ListenableFuture<FileSystemItem> fileMetadata = createEmpty(fileName, (String) null, FileConstants.FILE_CREATE);
 		return fileMetadata;
 	}
 
@@ -306,6 +308,7 @@ public class DocLibClient extends SharePointClient {
 	 * Creates an empty file.
 	 * 
 	 * @param fileName
+	 * @param library
 	 * @return OfficeFuture<FileSystemItem>
 	 */
 	public ListenableFuture<FileSystemItem> createFile(String fileName, String library) {
@@ -369,6 +372,74 @@ public class DocLibClient extends SharePointClient {
 		return result;
 	}
 
+
+	/**
+	 * Creates an empty file.
+	 *
+	 * @param fileName
+	 * @return OfficeFuture<FileSystemItem>
+	 */
+	public ListenableFuture<FileSystemItem> createFile(String fileName, UUID libraryId) {
+		if (fileName == null || fileName.length() == 0) {
+			throw new IllegalArgumentException("fileName cannot be null or empty");
+		}
+
+		if (libraryId == null || fileName.length() == 0) {
+			throw new IllegalArgumentException("libraryName cannot be null or empty");
+		}
+
+		final ListenableFuture<FileSystemItem> fileMetadata = createEmpty(fileName, libraryId, FileConstants.FILE_CREATE);
+		return fileMetadata;
+	}
+
+	/**
+	 * Creates a file with a given path inside a given library
+	 *
+	 * @param fileName
+	 * @param libraryId
+	 * @param overwrite
+	 * @param content
+	 * @return OfficeFuture<FileSystemItem>
+	 */
+	public ListenableFuture<FileSystemItem> createFile(String fileName, UUID libraryId, boolean overwrite,
+			byte[] content) {
+
+		if (fileName == null || fileName.length() == 0) {
+			throw new IllegalArgumentException("fileName cannot be null or empty");
+		}
+
+		String urlPart = urlEncode(String.format("Add(name='%s', overwrite='%s')", fileName,
+				Boolean.toString(overwrite)));
+
+		String url;
+		if (libraryId == null) {
+			url = getSiteUrl() + "_api/files/" + urlPart;
+		} else {
+			url = getSiteUrl() + String.format("_api/web/lists(guid'%s')/files/", libraryId) + urlPart;
+		}
+		final SettableFuture<FileSystemItem> result = SettableFuture.create();
+		Map<String, String> headers = new HashMap<String, String>();
+		headers.put("Content-Type", "application/octet-stream");
+
+		ListenableFuture<JSONObject> request = executeRequestJsonWithDigest(url, "POST", headers, content);
+
+		Futures.addCallback(request, new FutureCallback<JSONObject>() {
+			@Override
+			public void onFailure(Throwable t) {
+				result.setException(t);
+			}
+
+			@Override
+			public void onSuccess(JSONObject json) {
+				FileSystemItem item = new FileSystemItem();
+				item.loadFromJson(json, true);
+				result.set(item);
+			}
+
+		});
+		return result;
+	}
+
 	/**
 	 * Creates the file with a given file name and content
 	 * 
@@ -382,7 +453,7 @@ public class DocLibClient extends SharePointClient {
 	 */
 	public ListenableFuture<FileSystemItem> createFile(String fileName, boolean overwrite, byte[] content) {
 
-		return createFile(fileName, null, overwrite, content);
+		return createFile(fileName, (String) null, overwrite, content);
 	}
 
 	/**
@@ -539,6 +610,52 @@ public class DocLibClient extends SharePointClient {
 			postUrl = getSiteUrl() + "_api/files";
 		} else {
 			postUrl = getSiteUrl() + String.format("_api/web/lists/GetByTitle('%s')/files", urlEncode(library));
+		}
+
+		byte[] payload = null;
+		try {
+			String completeMetada = String.format(metadata, path);
+			payload = completeMetada.getBytes(Constants.UTF8_NAME);
+			ListenableFuture<JSONObject> request = executeRequestJsonWithDigest(postUrl, "POST", null, payload);
+
+			Futures.addCallback(request, new FutureCallback<JSONObject>() {
+				@Override
+				public void onFailure(Throwable t) {
+					result.setException(t);
+				}
+
+				@Override
+				public void onSuccess(JSONObject json) {
+					FileSystemItem item = new FileSystemItem();
+					item.loadFromJson(json, true);
+					result.set(item);
+				}
+			});
+
+		} catch (UnsupportedEncodingException e) {
+			result.setException(e);
+		}
+		return result;
+	}
+
+
+	/**
+	 * Creates the empty.
+	 *
+	 * @param path
+	 * @param metadata
+	 *            content for the file
+	 * @return OfficeFuture<FileSystemItem>
+	 */
+	private ListenableFuture<FileSystemItem> createEmpty(String path, UUID libraryId, String metadata) {
+
+		final SettableFuture<FileSystemItem> result = SettableFuture.create();
+
+		String postUrl = null;
+		if (libraryId == null) {
+			postUrl = getSiteUrl() + "_api/files";
+		} else {
+			postUrl = getSiteUrl() + String.format("_api/web/lists(guid'%s')/files", libraryId);
 		}
 
 		byte[] payload = null;
