@@ -500,6 +500,39 @@ public class ListClient extends SharePointClient {
      *
      * @return the user properties
      */
+    public ListenableFuture<SPCurrentUser> getCurrentUserProperties() {
+		final SettableFuture<SPCurrentUser> result = SettableFuture.create();
+
+		String url = getSiteUrl() + "/_api/web/currentuser";
+
+		ListenableFuture<JSONObject> request = executeRequestJson(url, "GET");
+
+		Futures.addCallback(request, new FutureCallback<JSONObject>() {
+			@Override
+			public void onFailure(Throwable t) {
+				result.setException(t);
+			}
+
+			@Override
+			public void onSuccess(JSONObject json) {
+                try {
+                    SPCurrentUser currentUser = SPCurrentUser.createFromJson(json, SPCurrentUser.class);
+                    result.set(currentUser);
+                } catch (JSONException e) {
+                    log(e);
+                    result.setException(e);
+                }
+			}
+		});
+		return result;
+	}
+
+
+ /**
+     * Gets user properties.
+     *
+     * @return the user properties
+     */
     public ListenableFuture<String> getUserProperties() {
 		final SettableFuture<String> result = SettableFuture.create();
 
@@ -523,7 +556,7 @@ public class ListClient extends SharePointClient {
 
 	/**
 	 * Gets the bytes from a given string.
-	 * 
+	 *
 	 * @param s
 	 *            the s
 	 * @return the bytes
