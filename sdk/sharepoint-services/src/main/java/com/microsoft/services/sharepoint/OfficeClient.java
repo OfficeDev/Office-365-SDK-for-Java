@@ -111,6 +111,12 @@ public class OfficeClient {
 		return mCredentials;
 	}
 
+
+    public void updateCredentials(Credentials credentials) {
+        this.mCredentials = credentials;
+    }
+
+
     /**
      * Generate o data query string.
      *
@@ -164,7 +170,9 @@ public class OfficeClient {
 
 		if (headers != null) {
 			for (String key : headers.keySet()) {
-				request.addHeader(key, headers.get(key));
+				Object value = headers.get(key);
+				if(value != null)
+					request.addHeader(key, "" + value);
 			}
 		}
 
@@ -197,6 +205,7 @@ public class OfficeClient {
 					}
 				} catch (IOException e) {
 					log(e);
+					result.setException(e);
 				}
 			}
 		});
@@ -246,10 +255,9 @@ public class OfficeClient {
 						JSONObject json = new JSONObject(string);
 						result.set(json);
 					}
-				} catch (UnsupportedEncodingException e) {
-					e.printStackTrace();
-				} catch (JSONException e) {
-					e.printStackTrace();
+				} catch (Throwable t) {
+					t.printStackTrace();
+					result.setException(t);
 				}
 			}
 		});
@@ -287,8 +295,9 @@ public class OfficeClient {
 				try {
 					discoveryInfo = DiscoveryInformation.listFromJson(json, DiscoveryInformation.class);
 					result.set(discoveryInfo);
-				} catch (JSONException e) {
+				} catch (Throwable e) {
 					log(e.getMessage(), LogLevel.Critical);
+					result.setException(e);
 				}
 			}
 		});

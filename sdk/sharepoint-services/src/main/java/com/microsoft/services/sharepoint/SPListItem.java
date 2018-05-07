@@ -5,6 +5,7 @@
  ******************************************************************************/
 package com.microsoft.services.sharepoint;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +69,7 @@ public class SPListItem extends OfficeEntity {
 	 * @return the id
 	 */
 	public int getId() {
-		return (Integer) getData("Id");
+		return Integer.valueOf(getData("Id").toString());
 	}
 
 	/**
@@ -105,7 +106,8 @@ public class SPListItem extends OfficeEntity {
 			throw new IllegalArgumentException("Cant get sub items from field " + field, e);
 		}
 	}
-	
+
+
 	@Override
 	public Object getData(String field) {
 		if (mValues.containsKey(field)) {

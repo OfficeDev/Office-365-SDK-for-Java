@@ -35,6 +35,7 @@ bin/
 gen/
 target/
 gen-external-apklibs/
+pom.xml
 
 # Mac
 .DS_Store
